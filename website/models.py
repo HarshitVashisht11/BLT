@@ -888,6 +888,7 @@ class IP(models.Model):
     address = models.CharField(max_length=39, null=True, blank=True)
     user = models.CharField(max_length=150, null=True, blank=True)
     issuenumber = models.IntegerField(null=True, blank=True)
+    issue = models.ForeignKey('Issue', null=True, blank=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     agent = models.TextField(null=True, blank=True)
     count = models.BigIntegerField(default=1)
@@ -899,6 +900,36 @@ class IP(models.Model):
         indexes = [
             models.Index(fields=["path", "created"], name="ip_path_created_idx"),
         ]
+
+    @classmethod
+    def record_issue_view(cls, request, issue):
+        """
+        Record a view for an issue
+        """
+        if request.user.is_authenticated:
+            user = request.user
+        else:
+            user = None
+            
+        ip_address = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        if ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+        else:
+            ip_address = request.META.get('REMOTE_ADDR', '')
+            
+        # Only create a new record if this IP hasn't viewed this issue recently
+        recent_view = cls.objects.filter(
+            ip_address=ip_address,
+            issue=issue,
+            created__gte=timezone.now() - datetime.timedelta(hours=1)
+        ).exists()
+        
+        if not recent_view:
+            cls.objects.create(
+                user=user,
+                ip_address=ip_address,
+                issue=issue
+            )
 
 
 class OrganizationAdmin(models.Model):

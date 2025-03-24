@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+  issues:
+    types: [opened, edited]
 
 jobs:
   auto-assign:
@@ -21,3 +23,25 @@ jobs:
         with:
             repo-token: ${{ secrets.GITHUB_TOKEN }}
             giphy-api-key: ${{ secrets.GIPHY_KEY }}
+
+  assign-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests PyGithub
+
+      - name: Add Badge to Issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/add_issue_badge.py
